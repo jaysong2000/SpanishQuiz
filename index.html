@@ -3,61 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spanish Quiz with Editable Bank</title>
+    <title>Spanish Quiz - Dual Bank Mode</title>
     <style>
         :root {
             --primary: #1a73e8;
             --success: #28a745;
             --danger: #dc3545;
             --bg: #f8f9fa;
-            --sidebar-width: 320px;
+            --sidebar-width: 300px;
         }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background-color: var(--bg); overflow: hidden; }
         
-        /* Sidebar Styles */
-        #sidebar { 
+        /* Sidebar General Styles */
+        .sidebar { 
             width: var(--sidebar-width); 
             background: white; 
-            border-right: 1px solid #ddd; 
             display: flex; 
             flex-direction: column; 
-            transition: margin-left 0.3s ease;
+            transition: all 0.3s ease;
             z-index: 10;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
         }
-        #sidebar.hidden { margin-left: calc(var(--sidebar-width) * -1); }
+        #left-sidebar { border-right: 1px solid #ddd; }
+        #right-sidebar { border-left: 1px solid #ddd; }
+        
+        /* Toggle Logic */
+        .hidden-left { margin-left: calc(var(--sidebar-width) * -1); }
+        .hidden-right { margin-right: calc(var(--sidebar-width) * -1); }
 
-        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #eee; background: #fff; }
+        .sidebar-header { padding: 1.2rem; border-bottom: 1px solid #eee; background: #fff; }
+        .sidebar-header h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
         
-        #wrongBankList { flex-grow: 1; overflow-y: auto; padding: 0.5rem; list-style: none; margin: 0; }
+        .list-container { flex-grow: 1; overflow-y: auto; padding: 0.5rem; list-style: none; margin: 0; }
         
-        /* List Item with Trash Icon */
+        /* List Items */
         .bank-item { 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            padding: 10px; 
+            padding: 8px 10px; 
             border-bottom: 1px solid #f0f0f0; 
             font-size: 0.85rem; 
             color: #444;
-            transition: background 0.2s;
         }
-        .bank-item:hover { background: #fcfcfc; }
         
-        .trash-btn {
+        /* Buttons */
+        .icon-btn {
             background: transparent;
-            color: #bbb;
             border: none;
             cursor: pointer;
-            padding: 5px 8px;
-            font-size: 1.2rem;
-            line-height: 1;
-            transition: color 0.2s;
+            padding: 5px;
+            font-size: 1.1rem;
+            transition: transform 0.1s;
         }
+        .icon-btn:active { transform: scale(1.2); }
+        .trash-btn { color: #bbb; }
         .trash-btn:hover { color: var(--danger); }
+        .add-btn { color: var(--primary); font-weight: bold; }
+        .add-btn:hover { color: var(--success); }
 
-        /* Main Content Styles */
-        #main-content { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
-        .navbar { padding: 1rem; display: flex; align-items: center; background: white; border-bottom: 1px solid #ddd; }
+        /* Main Content */
+        #main-content { flex-grow: 1; display: flex; flex-direction: column; position: relative; min-width: 400px; }
+        .navbar { padding: 1rem; display: flex; justify-content: space-between; align-items: center; background: white; border-bottom: 1px solid #ddd; }
         .quiz-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
         .card { background: white; padding: 2.5rem; border-radius: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); text-align: center; width: 90%; max-width: 450px; }
         
@@ -68,33 +75,32 @@
         .feedback { height: 30px; margin-top: 15px; font-weight: 600; }
         .correct { color: var(--success); }
         .incorrect { color: var(--danger); }
-        .hint { color: #666; font-size: 0.95rem; margin-top: 15px; min-height: 50px; background: #fefefe; padding: 10px; border-radius: 8px; }
+        .hint { color: #666; font-size: 0.95rem; margin-top: 15px; min-height: 50px; background: #fefefe; padding: 10px; border-radius: 8px; border: 1px dashed #eee; }
         .answer-reveal { color: var(--primary); font-weight: bold; display: block; margin-top: 4px; }
         
-        button { cursor: pointer; border: none; border-radius: 6px; padding: 10px 15px; font-weight: 600; }
-        .btn-toggle { background: #eee; color: #333; margin-right: 15px; }
+        button.action-btn { cursor: pointer; border: none; border-radius: 6px; padding: 10px 15px; font-weight: 600; }
+        .btn-toggle { background: #eee; color: #333; }
         .btn-review { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
         .btn-review.active { background: #ff9800; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-
+        
         .controls { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
-<aside id="sidebar">
+<aside id="left-sidebar" class="sidebar">
     <div class="sidebar-header">
-        <h3>Wrong Answer Bank</h3>
-        <p style="font-size: 0.8rem; color: #888;">Click 🗑 to remove mastered words</p>
-        <button id="reviewModeBtn" class="btn-review" onclick="toggleReviewMode()">Review Missed (0)</button>
+        <h3>Wrong Bank</h3>
+        <button id="reviewModeBtn" class="action-btn btn-review" onclick="toggleReviewMode()">Review Missed (0)</button>
     </div>
-    <ul id="wrongBankList"></ul>
+    <ul id="wrongBankList" class="list-container"></ul>
 </aside>
 
 <main id="main-content">
     <div class="navbar">
-        <button class="btn-toggle" onclick="toggleSidebar()">☰ Toggle Bank</button>
+        <button class="action-btn btn-toggle" onclick="toggleSidebar('left')">☰ Wrong Bank</button>
         <div style="font-weight: 600; color: #555;">Spanish Vocab 2.4A-C</div>
+        <button class="action-btn btn-toggle" onclick="toggleSidebar('right')">Total List ☰</button>
     </div>
 
     <div class="quiz-container">
@@ -111,6 +117,14 @@
     </div>
 </main>
 
+<aside id="right-sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <h3>Total Word Bank</h3>
+        <p style="font-size: 0.75rem; color: #888;">Click + to add for practice</p>
+    </div>
+    <ul id="totalBankList" class="list-container"></ul>
+</aside>
+
 <script>
     const rawData = [
         ["the stadium", "el estadio"], ["the synagogue", "la sinagoga"], ["the mosque", "la mezquita"],
@@ -125,7 +139,7 @@
         ["book store", "la librería"], ["bus", "el autobús"], ["bus stop", "la parada de autobús"],
         ["cathedral", "la catedral"], ["church", "la iglesia"], ["climate", "el clima"],
         ["directions", "las indicaciones"], ["fire station", "la estación de bomberos"], ["floor", "el piso", "la planta"],
-        ["fruit store/stand", "la frutería"], ["gallery", "la galería"], ["highway", "la autopista", "la carretera"],
+        ["fruit store/stand", "la frutería"], ["gallery", "la gallery"], ["highway", "la autopista", "la carretera"],
         ["home", "el hogar"], ["hostel", "el hostal"], ["lake", "el lago"], ["library", "la biblioteca"],
         ["map", "el mapa"], ["meat shop", "la carnicería"], ["neighborhood", "el barrio"],
         ["ocean", "el océano"], ["police station", "la estación de policía"], ["river", "el río"],
@@ -146,17 +160,21 @@
     let wrongBank = new Set();
     let isReviewMode = false;
 
+    // Elements
     const targetEl = document.getElementById('targetWord');
     const inputEl = document.getElementById('userInput');
     const feedbackEl = document.getElementById('feedback');
     const hintArea = document.getElementById('hintArea');
     const modeToggle = document.getElementById('modeToggle');
-    const bankListEl = document.getElementById('wrongBankList');
+    const wrongListEl = document.getElementById('wrongBankList');
+    const totalListEl = document.getElementById('totalBankList');
     const reviewBtn = document.getElementById('reviewModeBtn');
     const statusEl = document.getElementById('quizStatus');
-    const sidebar = document.getElementById('sidebar');
 
-    function toggleSidebar() { sidebar.classList.toggle('hidden'); }
+    function toggleSidebar(side) {
+        if (side === 'left') document.getElementById('left-sidebar').classList.toggle('hidden-left');
+        if (side === 'right') document.getElementById('right-sidebar').classList.toggle('hidden-right');
+    }
 
     function normalize(str) {
         return str.toLowerCase()
@@ -167,37 +185,41 @@
             .trim();
     }
 
-    function removeFromBank(index) {
-        wrongBank.delete(index);
-        updateBankUI();
-        // If bank is empty, force exit review mode
-        if (wrongBank.size === 0 && isReviewMode) {
-            toggleReviewMode();
+    function addToBank(index) {
+        if (!wrongBank.has(index)) {
+            wrongBank.add(index);
+            updateWrongBankUI();
         }
     }
 
-    function updateBankUI() {
-        bankListEl.innerHTML = "";
+    function removeFromBank(index) {
+        wrongBank.delete(index);
+        updateWrongBankUI();
+        if (wrongBank.size === 0 && isReviewMode) toggleReviewMode();
+    }
+
+    function updateWrongBankUI() {
+        wrongListEl.innerHTML = "";
         wrongBank.forEach(index => {
             const li = document.createElement('li');
             li.className = "bank-item";
-            
-            const textSpan = document.createElement('span');
-            textSpan.innerText = `${rawData[index][0]} → ${rawData[index][1]}`;
-            
-            const delBtn = document.createElement('button');
-            delBtn.className = "trash-btn";
-            delBtn.innerHTML = "&#128465;"; // Trash icon emoji
-            delBtn.title = "Remove from bank";
-            delBtn.onclick = () => removeFromBank(index);
-            
-            li.appendChild(textSpan);
-            li.appendChild(delBtn);
-            bankListEl.appendChild(li);
+            li.innerHTML = `<span>${rawData[index][0]}</span>
+                            <button class="icon-btn trash-btn" onclick="removeFromBank(${index})">🗑</button>`;
+            wrongListEl.appendChild(li);
         });
-        
         reviewBtn.innerText = `Review Missed (${wrongBank.size})`;
         reviewBtn.disabled = wrongBank.size === 0;
+    }
+
+    function initTotalBankUI() {
+        totalListEl.innerHTML = "";
+        rawData.forEach((item, index) => {
+            const li = document.createElement('li');
+            li.className = "bank-item";
+            li.innerHTML = `<span style="max-width: 80%">${item[0]}</span>
+                            <button class="icon-btn add-btn" onclick="addToBank(${index})">+</button>`;
+            totalListEl.appendChild(li);
+        });
     }
 
     function toggleReviewMode() {
@@ -216,7 +238,6 @@
     function nextWord() {
         wrongCounter = 0;
         let index;
-        
         if (isReviewMode && wrongBank.size > 0) {
             const missedIndices = Array.from(wrongBank);
             index = missedIndices[Math.floor(Math.random() * missedIndices.length)];
@@ -227,17 +248,9 @@
         const choice = rawData[index];
         if (isSpanishToEnglish) {
             const spanishOptions = choice.slice(1);
-            currentWordObj = {
-                index: index,
-                question: spanishOptions[Math.floor(Math.random() * spanishOptions.length)],
-                answers: [choice[0]]
-            };
+            currentWordObj = { index, question: spanishOptions[Math.floor(Math.random() * spanishOptions.length)], answers: [choice[0]] };
         } else {
-            currentWordObj = {
-                index: index,
-                question: choice[0],
-                answers: choice.slice(1)
-            };
+            currentWordObj = { index, question: choice[0], answers: choice.slice(1) };
         }
 
         targetEl.innerText = currentWordObj.question;
@@ -255,28 +268,24 @@
             if (isCorrect) {
                 feedbackEl.className = "feedback correct";
                 feedbackEl.innerText = "¡Correcto!";
-                hintArea.innerHTML = "Proper spelling: <br><span class='answer-reveal'>" + currentWordObj.answers.join(" / ") + "</span>";
-                setTimeout(nextWord, 1500);
+                hintArea.innerHTML = "Correct: <span class='answer-reveal'>" + currentWordObj.answers.join(" / ") + "</span>";
+                setTimeout(nextWord, 1200);
             } else {
                 wrongCounter++;
                 feedbackEl.className = "feedback incorrect";
                 feedbackEl.innerText = "Try again!";
-                
-                if (!wrongBank.has(currentWordObj.index)) {
-                    wrongBank.add(currentWordObj.index);
-                    updateBankUI();
-                }
-
+                addToBank(currentWordObj.index);
                 if (wrongCounter >= 3) {
-                    hintArea.innerHTML = "The correct answer is: <br><span class='answer-reveal'>" + currentWordObj.answers.join(" / ") + "</span>";
+                    hintArea.innerHTML = "Hint: <span class='answer-reveal'>" + currentWordObj.answers.join(" / ") + "</span>";
                 }
                 inputEl.value = "";
             }
         }
     });
 
+    // Start Up
+    initTotalBankUI();
     nextWord();
-    updateBankUI();
 </script>
 
 </body>
