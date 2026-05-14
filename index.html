@@ -11,13 +11,12 @@
         .word-display { font-size: 2rem; font-weight: bold; margin: 20px 0; min-height: 3rem; }
         input[type="text"] { width: 80%; padding: 12px; font-size: 1.1rem; border: 2px solid #ddd; border-radius: 8px; outline: none; transition: border-color 0.3s; }
         input[type="text"]:focus { border-color: #1a73e8; }
-        .feedback { height: 50px; margin-top: 15px; font-weight: 500; }
+        .feedback { height: 30px; margin-top: 15px; font-weight: 500; }
         .correct { color: #28a745; }
         .incorrect { color: #dc3545; }
-        .hint { color: #666; font-size: 0.9rem; margin-top: 5px; }
+        .hint { color: #666; font-size: 0.9rem; margin-top: 10px; min-height: 40px; line-height: 1.4; }
+        .answer-reveal { color: #1a73e8; font-weight: bold; display: block; margin-top: 5px; }
         .toggle-container { margin-bottom: 20px; font-size: 0.9rem; color: #555; }
-        button { background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #1557b0; }
     </style>
 </head>
 <body>
@@ -33,11 +32,10 @@
     <div class="word-display" id="targetWord">Loading...</div>
     <input type="text" id="userInput" placeholder="Type answer here..." autocomplete="off">
     <div class="feedback" id="feedback"></div>
-    <div class="hint" id="correctSpelling"></div>
+    <div class="hint" id="hintArea"></div>
 </div>
 
 <script>
-    // Data organized to handle multiple valid answers per English key
     const rawData = [
         ["the stadium", "el estadio"], ["the synagogue", "la sinagoga"], ["the mosque", "la mezquita"],
         ["the theater", "el teatro"], ["the post office", "el correo"], ["the market", "el mercado"],
@@ -63,28 +61,26 @@
         ["around the block", "a la vuelta de la esquina"], ["currency", "la moneda"], 
         ["language", "el idioma", "la lengua"], ["avenue", "la avenida"], ["to travel", "viajar"],
         ["Excuse me (fam)", "Disculpa", "Perdona"], ["Excuse me (formal)", "Disculpe", "Perdone"],
-        // Combined multi-option keys
-        ["location", "la ubicación", "la locación"],
-        ["place", "el lugar", "el sitio"]
+        ["location", "la ubicación", "la locación"], ["place", "el lugar", "el sitio"]
     ];
 
     let currentWordObj = {};
     let isSpanishToEnglish = false;
+    let wrongCounter = 0;
 
     const targetEl = document.getElementById('targetWord');
     const inputEl = document.getElementById('userInput');
     const feedbackEl = document.getElementById('feedback');
-    const spellingEl = document.getElementById('correctSpelling');
+    const hintArea = document.getElementById('hintArea');
     const modeToggle = document.getElementById('modeToggle');
     const directionLabel = document.getElementById('directionLabel');
 
-    // Remove accents and articles for comparison
     function normalize(str) {
         return str.toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Strip accents
-            .replace(/\b(el|la|los|las|the|a|an)\b/g, "")    // Strip articles
-            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"")      // Strip punctuation
-            .replace(/\s+/g, ' ')                            // Collapse whitespace
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/\b(el|la|los|las|the|a|an)\b/g, "")
+            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"")
+            .replace(/\s+/g, ' ')
             .trim();
     }
 
@@ -95,11 +91,10 @@
     }
 
     function nextWord() {
-        const randomIndex = Math.floor(Math.random() * rawData.length);
-        const choice = rawData[randomIndex];
+        wrongCounter = 0;
+        const choice = rawData[Math.floor(Math.random() * rawData.length)];
         
         if (isSpanishToEnglish) {
-            // Pick a random Spanish variant as the question
             const spanishOptions = choice.slice(1);
             currentWordObj = {
                 question: spanishOptions[Math.floor(Math.random() * spanishOptions.length)],
@@ -115,7 +110,7 @@
         targetEl.innerText = currentWordObj.question;
         inputEl.value = "";
         feedbackEl.innerText = "";
-        spellingEl.innerText = "";
+        hintArea.innerHTML = "";
         inputEl.focus();
     }
 
@@ -127,20 +122,21 @@
             if (isCorrect) {
                 feedbackEl.className = "feedback correct";
                 feedbackEl.innerText = "¡Correcto!";
-                // Show the version with accents/articles if it was a Spanish answer
-                if (!isSpanishToEnglish) {
-                    spellingEl.innerText = "Correct spelling: " + currentWordObj.answers.join(" / ");
-                }
-                setTimeout(nextWord, 1500);
+                hintArea.innerHTML = "Proper spelling: <br><span class='answer-reveal'>" + currentWordObj.answers.join(" / ") + "</span>";
+                setTimeout(nextWord, 2000);
             } else {
+                wrongCounter++;
                 feedbackEl.className = "feedback incorrect";
                 feedbackEl.innerText = "Try again!";
+                
+                if (wrongCounter >= 3) {
+                    hintArea.innerHTML = "The correct answer is: <br><span class='answer-reveal'>" + currentWordObj.answers.join(" / ") + "</span>";
+                }
                 inputEl.value = "";
             }
         }
     });
 
-    // Start the quiz
     nextWord();
 </script>
 
