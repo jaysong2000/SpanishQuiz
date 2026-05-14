@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spanish Vocabulary Quiz</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f2f5; }
+        .card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 400px; }
+        h1 { color: #1a73e8; margin-bottom: 0.5rem; }
+        .word-display { font-size: 2rem; font-weight: bold; margin: 20px 0; min-height: 3rem; }
+        input[type="text"] { width: 80%; padding: 12px; font-size: 1.1rem; border: 2px solid #ddd; border-radius: 8px; outline: none; transition: border-color 0.3s; }
+        input[type="text"]:focus { border-color: #1a73e8; }
+        .feedback { height: 50px; margin-top: 15px; font-weight: 500; }
+        .correct { color: #28a745; }
+        .incorrect { color: #dc3545; }
+        .hint { color: #666; font-size: 0.9rem; margin-top: 5px; }
+        .toggle-container { margin-bottom: 20px; font-size: 0.9rem; color: #555; }
+        button { background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #1557b0; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="toggle-container">
+        <label>
+            <input type="checkbox" id="modeToggle" onchange="resetQuiz()"> 
+            Spanish to English Mode
+        </label>
+    </div>
+    <div id="directionLabel">Mode: English to Spanish</div>
+    <div class="word-display" id="targetWord">Loading...</div>
+    <input type="text" id="userInput" placeholder="Type answer here..." autocomplete="off">
+    <div class="feedback" id="feedback"></div>
+    <div class="hint" id="correctSpelling"></div>
+</div>
+
+<script>
+    // Data organized to handle multiple valid answers per English key
+    const rawData = [
+        ["the stadium", "el estadio"], ["the synagogue", "la sinagoga"], ["the mosque", "la mezquita"],
+        ["the theater", "el teatro"], ["the post office", "el correo"], ["the market", "el mercado"],
+        ["the game", "el partido"], ["the border", "la frontera"], ["the capital", "la capital"],
+        ["the country", "el país"], ["the countryside", "el campo"], ["the tourist", "el/la turista"],
+        ["the tourism", "el turismo"], ["indigenous", "indígena"], ["none", "ninguno", "ninguna"],
+        ["at least", "por lo menos"], ["to turn / to fold", "doblar"], ["Turn… (command)", "Dobla"],
+        ["to cross", "cruzar"], ["Cross… (command)", "Cruza"], ["to continue", "seguir"],
+        ["Continue / keep going", "Sigue"], ["address", "la dirección"], ["apartment", "el apartamento"],
+        ["bakery", "la panadería"], ["bank", "el banco"], ["block", "la cuadra", "la manzana"],
+        ["book store", "la librería"], ["bus", "el autobús"], ["bus stop", "la parada de autobús"],
+        ["cathedral", "la catedral"], ["church", "la iglesia"], ["climate", "el clima"],
+        ["directions", "las indicaciones"], ["fire station", "la estación de bomberos"], ["floor", "el piso", "la planta"],
+        ["fruit store/stand", "la frutería"], ["gallery", "la galería"], ["highway", "la autopista", "la carretera"],
+        ["home", "el hogar"], ["hostel", "el hostal"], ["lake", "el lago"], ["library", "la biblioteca"],
+        ["map", "el mapa"], ["meat shop", "la carnicería"], ["neighborhood", "el barrio"],
+        ["ocean", "el océano"], ["police station", "la estación de policía"], ["river", "el río"],
+        ["school", "la escuela"], ["sea", "el mar"], ["store", "la tienda"], ["street", "la calle"],
+        ["town", "el pueblo"], ["train", "el tren"], ["vegetable store/stand", "la verdulería"],
+        ["East", "el Este"], ["North", "el Norte"], ["West", "el Oeste"], ["South", "el Sur"],
+        ["far from", "lejos de"], ["next to", "al lado de"], ["close to", "cerca de"],
+        ["to the left", "a la izquierda"], ["to the right", "a la derecha"], ["across from", "en frente de"],
+        ["around the block", "a la vuelta de la esquina"], ["currency", "la moneda"], 
+        ["language", "el idioma", "la lengua"], ["avenue", "la avenida"], ["to travel", "viajar"],
+        ["Excuse me (fam)", "Disculpa", "Perdona"], ["Excuse me (formal)", "Disculpe", "Perdone"],
+        // Combined multi-option keys
+        ["location", "la ubicación", "la locación"],
+        ["place", "el lugar", "el sitio"]
+    ];
+
+    let currentWordObj = {};
+    let isSpanishToEnglish = false;
+
+    const targetEl = document.getElementById('targetWord');
+    const inputEl = document.getElementById('userInput');
+    const feedbackEl = document.getElementById('feedback');
+    const spellingEl = document.getElementById('correctSpelling');
+    const modeToggle = document.getElementById('modeToggle');
+    const directionLabel = document.getElementById('directionLabel');
+
+    // Remove accents and articles for comparison
+    function normalize(str) {
+        return str.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Strip accents
+            .replace(/\b(el|la|los|las|the|a|an)\b/g, "")    // Strip articles
+            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"")      // Strip punctuation
+            .replace(/\s+/g, ' ')                            // Collapse whitespace
+            .trim();
+    }
+
+    function resetQuiz() {
+        isSpanishToEnglish = modeToggle.checked;
+        directionLabel.innerText = isSpanishToEnglish ? "Mode: Spanish to English" : "Mode: English to Spanish";
+        nextWord();
+    }
+
+    function nextWord() {
+        const randomIndex = Math.floor(Math.random() * rawData.length);
+        const choice = rawData[randomIndex];
+        
+        if (isSpanishToEnglish) {
+            // Pick a random Spanish variant as the question
+            const spanishOptions = choice.slice(1);
+            currentWordObj = {
+                question: spanishOptions[Math.floor(Math.random() * spanishOptions.length)],
+                answers: [choice[0]]
+            };
+        } else {
+            currentWordObj = {
+                question: choice[0],
+                answers: choice.slice(1)
+            };
+        }
+
+        targetEl.innerText = currentWordObj.question;
+        inputEl.value = "";
+        feedbackEl.innerText = "";
+        spellingEl.innerText = "";
+        inputEl.focus();
+    }
+
+    inputEl.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const userVal = normalize(inputEl.value);
+            const isCorrect = currentWordObj.answers.some(ans => normalize(ans) === userVal);
+
+            if (isCorrect) {
+                feedbackEl.className = "feedback correct";
+                feedbackEl.innerText = "¡Correcto!";
+                // Show the version with accents/articles if it was a Spanish answer
+                if (!isSpanishToEnglish) {
+                    spellingEl.innerText = "Correct spelling: " + currentWordObj.answers.join(" / ");
+                }
+                setTimeout(nextWord, 1500);
+            } else {
+                feedbackEl.className = "feedback incorrect";
+                feedbackEl.innerText = "Try again!";
+                inputEl.value = "";
+            }
+        }
+    });
+
+    // Start the quiz
+    nextWord();
+</script>
+
+</body>
+</html>
