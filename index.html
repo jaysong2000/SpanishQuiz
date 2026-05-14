@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spanish Quiz with Hideable Bank</title>
+    <title>Spanish Quiz with Editable Bank</title>
     <style>
         :root {
             --primary: #1a73e8;
             --success: #28a745;
             --danger: #dc3545;
             --bg: #f8f9fa;
-            --sidebar-width: 300px;
+            --sidebar-width: 320px;
         }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background-color: var(--bg); overflow: hidden; }
         
@@ -24,38 +24,57 @@
             transition: margin-left 0.3s ease;
             z-index: 10;
         }
-        /* Class to hide sidebar */
         #sidebar.hidden { margin-left: calc(var(--sidebar-width) * -1); }
 
         .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #eee; background: #fff; }
-        #wrongBankList { flex-grow: 1; overflow-y: auto; padding: 1rem; list-style: none; margin: 0; }
-        #wrongBankList li { padding: 8px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; color: #555; }
         
+        #wrongBankList { flex-grow: 1; overflow-y: auto; padding: 0.5rem; list-style: none; margin: 0; }
+        
+        /* List Item with Trash Icon */
+        .bank-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 10px; 
+            border-bottom: 1px solid #f0f0f0; 
+            font-size: 0.85rem; 
+            color: #444;
+            transition: background 0.2s;
+        }
+        .bank-item:hover { background: #fcfcfc; }
+        
+        .trash-btn {
+            background: transparent;
+            color: #bbb;
+            border: none;
+            cursor: pointer;
+            padding: 5px 8px;
+            font-size: 1.2rem;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .trash-btn:hover { color: var(--danger); }
+
         /* Main Content Styles */
         #main-content { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
-        
-        /* Navbar for Toggle */
         .navbar { padding: 1rem; display: flex; align-items: center; background: white; border-bottom: 1px solid #ddd; }
-        
         .quiz-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
         .card { background: white; padding: 2.5rem; border-radius: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); text-align: center; width: 90%; max-width: 450px; }
         
         .word-display { font-size: 2.2rem; font-weight: bold; margin: 20px 0; color: #333; }
-        input[type="text"] { width: 100%; box-sizing: border-box; padding: 15px; font-size: 1.1rem; border: 2px solid #eee; border-radius: 10px; outline: none; transition: border-color 0.3s; }
+        input[type="text"] { width: 100%; box-sizing: border-box; padding: 15px; font-size: 1.1rem; border: 2px solid #eee; border-radius: 10px; outline: none; }
         input[type="text"]:focus { border-color: var(--primary); }
         
-        .feedback { height: 30px; margin-top: 15px; font-weight: 600; font-size: 1.1rem; }
+        .feedback { height: 30px; margin-top: 15px; font-weight: 600; }
         .correct { color: var(--success); }
         .incorrect { color: var(--danger); }
         .hint { color: #666; font-size: 0.95rem; margin-top: 15px; min-height: 50px; background: #fefefe; padding: 10px; border-radius: 8px; }
         .answer-reveal { color: var(--primary); font-weight: bold; display: block; margin-top: 4px; }
         
-        /* Buttons */
-        button { cursor: pointer; border: none; border-radius: 6px; padding: 10px 15px; font-weight: 600; transition: all 0.2s; }
+        button { cursor: pointer; border: none; border-radius: 6px; padding: 10px 15px; font-weight: 600; }
         .btn-toggle { background: #eee; color: #333; margin-right: 15px; }
-        .btn-toggle:hover { background: #ddd; }
         .btn-review { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
-        .btn-review.active { background: #ff9800; box-shadow: 0 0 10px rgba(255,152,0,0.4); }
+        .btn-review.active { background: #ff9800; }
         button:disabled { background: #ccc; cursor: not-allowed; }
 
         .controls { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
@@ -66,7 +85,7 @@
 <aside id="sidebar">
     <div class="sidebar-header">
         <h3>Wrong Answer Bank</h3>
-        <p style="font-size: 0.8rem; color: #888;">Session History</p>
+        <p style="font-size: 0.8rem; color: #888;">Click 🗑 to remove mastered words</p>
         <button id="reviewModeBtn" class="btn-review" onclick="toggleReviewMode()">Review Missed (0)</button>
     </div>
     <ul id="wrongBankList"></ul>
@@ -137,9 +156,7 @@
     const statusEl = document.getElementById('quizStatus');
     const sidebar = document.getElementById('sidebar');
 
-    function toggleSidebar() {
-        sidebar.classList.toggle('hidden');
-    }
+    function toggleSidebar() { sidebar.classList.toggle('hidden'); }
 
     function normalize(str) {
         return str.toLowerCase()
@@ -150,20 +167,41 @@
             .trim();
     }
 
+    function removeFromBank(index) {
+        wrongBank.delete(index);
+        updateBankUI();
+        // If bank is empty, force exit review mode
+        if (wrongBank.size === 0 && isReviewMode) {
+            toggleReviewMode();
+        }
+    }
+
     function updateBankUI() {
         bankListEl.innerHTML = "";
         wrongBank.forEach(index => {
             const li = document.createElement('li');
-            li.innerText = `${rawData[index][0]} — ${rawData[index].slice(1).join(', ')}`;
+            li.className = "bank-item";
+            
+            const textSpan = document.createElement('span');
+            textSpan.innerText = `${rawData[index][0]} → ${rawData[index][1]}`;
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = "trash-btn";
+            delBtn.innerHTML = "&#128465;"; // Trash icon emoji
+            delBtn.title = "Remove from bank";
+            delBtn.onclick = () => removeFromBank(index);
+            
+            li.appendChild(textSpan);
+            li.appendChild(delBtn);
             bankListEl.appendChild(li);
         });
+        
         reviewBtn.innerText = `Review Missed (${wrongBank.size})`;
         reviewBtn.disabled = wrongBank.size === 0;
-        if (wrongBank.size === 0 && isReviewMode) toggleReviewMode();
     }
 
     function toggleReviewMode() {
-        if (wrongBank.size === 0) return;
+        if (wrongBank.size === 0 && !isReviewMode) return;
         isReviewMode = !isReviewMode;
         reviewBtn.classList.toggle('active', isReviewMode);
         statusEl.innerText = isReviewMode ? "Reviewing Missed" : "All Words";
@@ -187,7 +225,6 @@
         }
 
         const choice = rawData[index];
-        
         if (isSpanishToEnglish) {
             const spanishOptions = choice.slice(1);
             currentWordObj = {
@@ -219,10 +256,6 @@
                 feedbackEl.className = "feedback correct";
                 feedbackEl.innerText = "¡Correcto!";
                 hintArea.innerHTML = "Proper spelling: <br><span class='answer-reveal'>" + currentWordObj.answers.join(" / ") + "</span>";
-                
-                // If in review mode and they got it right, you could choose to remove it from bank.
-                // For now, it stays in the bank so they can see their history.
-                
                 setTimeout(nextWord, 1500);
             } else {
                 wrongCounter++;
